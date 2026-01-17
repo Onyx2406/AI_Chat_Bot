@@ -1,47 +1,62 @@
-// VULNERABLE CODE - For testing Paxley PR scanning
-const express = require('express');
-const { exec } = require('child_process');
+// VULNERABLE CODE - Testing Paxley PR diff scanning
+// Uses only Node.js built-ins for CodeQL to analyze
+
+const http = require('http');
+const url = require('url');
 const fs = require('fs');
+const { exec } = require('child_process');
 
-const app = express();
-app.use(express.json());
+// HARDCODED SECRETS - Should be detected by Gitleaks
+// Using realistic formats that match known secret patterns
+const STRIPE_API_KEY = 'sk_live_4eC39HqLyjWDarjtT1zdp7dc';
+const SLACK_TOKEN = 'xoxb-263594206564-FGqddMF8t08v8N7Oq4i57vs1';
+const PRIVATE_KEY = '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy\n-----END RSA PRIVATE KEY-----';
 
-// HARDCODED SECRETS - should be detected by Gitleaks
-const OPENAI_API_KEY = 'sk-proj-abcdef123456789012345678901234567890abcd';
-const AWS_ACCESS_KEY = 'AKIAIOSFODNN7EXAMPLE';
-const AWS_SECRET_KEY = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
+// EVAL INJECTION - Direct user input in eval
+// CodeQL should definitely detect this
+function dangerousEval(userInput) {
+  return eval(userInput);
+}
 
-const GITHUB_TOKEN = 'ghp_xXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxX';
-// COMMAND INJECTION - should be detected by CodeQL
-app.get('/ping', (req, res) => {
-  const host = req.query.host;
-  exec('ping -c 1 ' + host, (err, stdout) => {
-    res.send(stdout);
+// COMMAND INJECTION - User input in shell command
+// CodeQL should detect this even without express types
+function runCommand(cmd) {
+  exec(cmd, (err, stdout) => {
+    console.log(stdout);
   });
+}
+
+// PATH TRAVERSAL - User input in file path
+function readUserFile(filename) {
+  return fs.readFileSync('/data/' + filename, 'utf8');
+}
+
+// Create HTTP server with vulnerable endpoints
+const server = http.createServer((req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+  const query = parsedUrl.query;
+
+  // VULNERABLE: Direct eval of user input
+  if (parsedUrl.pathname === '/eval') {
+    const result = eval(query.code);
+    res.end(String(result));
+  }
+
+  // VULNERABLE: Command injection
+  if (parsedUrl.pathname === '/exec') {
+    exec(query.cmd, (err, stdout) => {
+      res.end(stdout);
+    });
+  }
+
+  // VULNERABLE: Path traversal
+  if (parsedUrl.pathname === '/read') {
+    const content = fs.readFileSync(query.file);
+    res.end(content);
+  }
+
+  res.end('OK');
 });
 
-// XSS - should be detected by CodeQL  
-app.get('/search', (req, res) => {
-  const q = req.query.q;
-  res.send('<html><body>Results: ' + q + '</body></html>');
-});
-
-// PATH TRAVERSAL - should be detected by CodeQL
-app.get('/file', (req, res) => {
-  const name = req.query.name;
-  const content = fs.readFileSync('/var/data/' + name, 'utf-8');
-  res.send(content);
-});
-
-// EVAL INJECTION - should be detected by CodeQL
-app.post('/calc', (req, res) => {
-  const expr = req.body.expression;
-  const result = eval(expr);
-  res.json({ result });
-});
-
-app.listen(3000);
-
-// Trigger PR scan test - 2026-01-17T18:48:19.988Z
-
-// Test PR scan #2 - 2026-01-17T19:01:32.055Z
+server.listen(3000);
+console.log('Vulnerable server running on port 3000');
