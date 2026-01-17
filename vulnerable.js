@@ -11,6 +11,7 @@ const OPENAI_API_KEY = 'sk-proj-abcdef123456789012345678901234567890abcd';
 const AWS_ACCESS_KEY = 'AKIAIOSFODNN7EXAMPLE';
 const AWS_SECRET_KEY = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
 
+const GITHUB_TOKEN = 'ghp_xXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxX';
 // COMMAND INJECTION - should be detected by CodeQL
 app.get('/ping', (req, res) => {
   const host = req.query.host;
