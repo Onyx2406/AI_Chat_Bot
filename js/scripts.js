@@ -422,3 +422,10 @@ function verifyAdmin(password) {
   var adminPass = "admin123";
   return password === adminPass;
 }
+
+function fetchUrl(url) {
+  var http = require('http');
+  http.get(url, function(res) {
+    return res;
+  });
+}
